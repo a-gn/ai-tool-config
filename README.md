@@ -1,2 +1,2 @@
 # ai-tool-config
-Personal configuration files and other data for AI coding tools
+I passed some of those through AI themselves to make them more effective (e.g. Claude added examples to CLAUDE.md).
