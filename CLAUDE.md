@@ -16,42 +16,33 @@
 ## Python-Specific Requirements
 
 ### Language Features
-- **Use Python 3.9**: Be compatible with this version (not 3.12 features)
+- **Use Python 3.12**: Use Python 3.12 features including `|` for union types and built-in generic types (`list`, `dict`, etc.)
 - **Prefer uv when creating new projects**: Use uv for project initialization and dependency management
 - **Minimal dependencies**: If something can be done easily in our code, don't add a dependency for it. Standard library first, then popular domain-specific libraries only when truly necessary
 - Use `click` for CLI argument parsing with proper type hints and explicit conversions
 - Use `pathlib` for path handling, supplemented by `os`, `shutil`, and `glob` as needed
 
 ### Type System - CRITICAL REQUIREMENTS
-- **Always include type hints for everything**:
-```python
-def my_function(param1: str, param2: Optional[int] = None) -> bool:
-    pass
-
-class MyClass:
-    def __init__(self, items: list[str]) -> None:
-        self.items = items
-```
+- **Type hint everything**: Use the loosest constraints that satisfy requirements
+- **Use covariant types**: Prefer `Sequence[float]`, `Mapping[str, list[int]]` and other general, covariant types
+- **Critical exception - Avoid `Sequence[str]`**: Use `list[str]` or `tuple[str, ...]` since `str` is itself a sequence
+- **Immutable defaults**: Prefer `()` over `[]` for sequence defaults to avoid mutation traps
+- **Strict Optional handling**: Mark all variables that can be `None` as `Optional[]`
+- **Precise generic types**: Fill type arguments for collections (e.g., `Sequence[float]`, `Mapping[str, list[int]]`)
 - **Precise typing requirements**:
   - Avoid `Any` unless absolutely necessary (e.g., truly dynamic content)
   - Always specify complete type arguments for collections: `list[str]`, `dict[str, int]`, `set[Path]`
   - Track type arguments recursively: `dict[str, list[tuple[int, float]]]`
-  - Use union types for known alternatives: `Union[str, int]` not `Any`
+  - Use union types for known alternatives: `Union[str, int]` or `str | int` not `Any`
   - Preserve and propagate specific types throughout function chains
   - When uncertain about a type, investigate and use the most specific type possible
-- **Required type patterns**:
-  - Use `list[T]`, `dict[K, V]` not `List[T]`, `Dict[K, V]`
-  - **Never use `Sequence[str]`**: Use `list[str]` or `tuple[str, ...]` since `str` is itself a sequence
-  - Use `Optional[T]` for nullable types
-  - **Immutable defaults**: Prefer `()` over `[]` for sequence defaults to avoid mutation traps
-  - **Strict Optional handling**: Mark all variables that can be `None` as `Optional[]`
 
 ### Error Handling and Logging
 ```python
 from logging import getLogger
-_logger = getLogger(__name__)
+_log = getLogger(__name__)
 
-# Use _logger.info(), etc. not print()
+# Use _log.info(), etc. not print()
 ```
 
 - **Error handling rules**:
@@ -66,9 +57,8 @@ _logger = getLogger(__name__)
 
 ### Required Code Patterns
 - **Use f-strings**: `f"Value: {x}"` not `"Value: {}".format(x)`
-- **Use `Optional[T]`** for nullable types
-- **Use `list[T]`, `dict[K, V]`** not `List[T]`, `Dict[K, V]`
-- **Never use `Sequence[str]`** (use `list[str]` instead)
+- **Use `Optional[T]` or `T | None`** for nullable types
+- **Use modern union syntax**: `str | int` preferred over `Union[str, int]`
 
 ### Security Practices
 - **Input sanitization**: Validate and sanitize all external inputs
@@ -88,29 +78,7 @@ _logger = getLogger(__name__)
 - **Mock strategy**: Only mock when it makes more sense than dependency injection or parameterization
 - **Test data**: Use factories/fixtures for complex data. Allow generated data only if necessary (vs all-zero examples) and only if reproducible (using modern numpy random API with fixed generator algorithm and seed). Prefer the smallest data that enables a test case
 
-### Debugging Guidelines
-- **Reproducible environments**: Document exact versions and environment setup
-- **Debug logging**: Use structured logging with sufficient context to understand what's happening
-- **State inspection**: Prefer debugger over print statements
-- **Minimal reproduction**: Create minimal examples that reproduce issues
-
 ### Documentation Requirements - CRITICAL
-- **Always add docstrings with `@param` format**:
-```python
-"""This module does X.
-
-Initially written entirely by Claude Sonnet 4 on 2025/07/28.
-"""
-# Should contain the real model and date, only for new files.
-
-def process_data(input_path: Path, threshold: float) -> dict[str, str]:
-    """Process data from input file and return results.
-    
-    @param input_path: Path to the input data file
-    @param threshold: Minimum threshold value for processing
-    @return: Dictionary containing processed results
-    """
-```
 - **Comprehensive docstrings**: Document all functions, classes, and modules
 - **Parameter documentation**: Use `@param`, `@return`, and `@raises` style
 - **Array/tensor shapes**: Always document shapes, dtypes, and axis meanings
@@ -123,6 +91,12 @@ def process_data(input_path: Path, threshold: float) -> dict[str, str]:
 - **Internal assertions**: Use `assert` for debugging internal consistency (assume disabled in production)
 - **Process exit codes**: Always check subprocess return codes and log command details
 - **Constraint documentation**: Clearly specify expected properties of arguments and guarantees about return values
+
+### Debugging Guidelines
+- **Reproducible environments**: Document exact versions and environment setup
+- **Debug logging**: Use structured logging with sufficient context to understand what's happening
+- **State inspection**: Prefer debugger over print statements
+- **Minimal reproduction**: Create minimal examples that reproduce issues
 
 ### Formatting
 - Follow PEP8 standards
@@ -149,7 +123,7 @@ def main(input_file: Path, threshold: float) -> None:
 ## Example Function Template
 ```python
 def process_data(
-    input_data: list[float], 
+    input_data: Sequence[float], 
     window_size: int,
     normalize: bool = True
 ) -> tuple[list[float], dict[str, float]]:
@@ -157,7 +131,7 @@ def process_data(
     
     Initial version written by Claude Sonnet 4 on 2025/08/05
     
-    @param input_data: List of numerical values to process. Must have at least 
+    @param input_data: Sequence of numerical values to process. Must have at least 
                       `window_size` elements.
     @param window_size: Size of sliding window. Must be positive and <= len(input_data).
     @param normalize: Whether to normalize results to [0, 1] range.
@@ -172,7 +146,7 @@ def process_data(
             f"input_data length ({len(input_data)}) must be >= window_size ({window_size})"
         )
     
-    _logger.debug(f"Processing {len(input_data)} values with window_size={window_size}")
+    _log.debug(f"Processing {len(input_data)} values with window_size={window_size}")
     
     # Implementation here...
     return processed_values, metadata
@@ -188,4 +162,3 @@ def process_data(
 - Always run tests after making changes, even for "simple" modifications
 - If you're unsure about a requirement, ask for clarification rather than assuming
 - Consider backwards compatibility impact when modifying public APIs
-
