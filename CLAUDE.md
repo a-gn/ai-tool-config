@@ -9,6 +9,7 @@
 - **Pure functions preferred**: Use pure functions when applicable. Only introduce side effects (like in-place modifications) when there's a significant advantage in performance or maintainability. Always document side effects clearly.
 - **Simple solutions first**: Start with straightforward approaches before adding complexity.
 - **Tests must pass**: All tests must pass in both Python and C++.
+- **Fix test warnings**: Fix any warnings that appear during test runs, unless they are another library's responsibility.
 
 ## Python-Specific Requirements
 
