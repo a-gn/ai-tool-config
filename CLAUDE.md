@@ -2,7 +2,7 @@
 
 ## General Coding Principles
 
-- **Maintainability first**: Write code that clearly shows intent. Use descriptive names that help first-time readers understand the purpose. Don't abbreviate unnecessarily—characters are cheap.
+- **Maintainability first**: Write code that clearly shows intent. Use descriptive names that help first-time readers understand the purpose. Don't abbreviate unless it would make things *more* readable. Be especially careful when abbreviating to one letter - prefer full words when reasonable. Characters are cheap.
 - **Static analysis first**: Write code to be as statically checkable as possible given the language constraints. Catch errors at compile/analysis time rather than runtime.
 - **Minimal scope changes**: Only modify what's needed for the specific task. Don't refactor unrelated code unless explicitly requested.
 - **Complete implementations**: Write full-featured code. If something can't be implemented, explicitly state what's missing rather than using placeholder functions or dummy return values.
