@@ -17,7 +17,7 @@
 - **Linting**: All code must pass language-specific linting with zero errors
 - **Formatting**: Use automated formatting tools before committing or finishing changes
 - **Import organization**: Use tools to organize imports consistently
-- **Tests must pass**: All tests must pass and any warnings during test runs must be fixed (unless they are another library's responsibility)
+- **Tests must pass**: All tests must pass and any warnings during test runs must be fixed _even when all tests pass_ (skip and list them when an external library is causing them)
 - **Follow best practices**: Adhere to language-specific style guides and best practices. Fetch relevant documentation, PEPs, or style guides when unsure.
 
 ## Python-Specific Requirements
