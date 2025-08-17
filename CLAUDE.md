@@ -38,7 +38,7 @@
 - Python 3.12 features are allowed (not required), but prefer `|` for union types and built-in generic types (`list`, `dict`, etc.)
 - Minimize external dependencies: standard library first, then popular domain-specific libraries
 - Use `click` for CLI argument parsing with proper type hints and explicit conversions
-- Use `pathlib` for path handling, supplemented by `os`, `shutil`, and `glob` as needed
+- Use `pathlib.Path` and `pathlib.PurePath` for path handling as warranted, supplemented by `os`, `shutil`, and `glob` as needed. Do not use `str` for paths unless warranted (e.g. converting for an outside library or manipulating S3 "paths").
 
 ### Import Organization
 ```python
@@ -54,7 +54,7 @@ from .utils import helper_function
 from .models import DataModel
 ```
 
-**Note**: Keep imports organized (standard library, third-party, local) but don't prevent import/include sorting with comments or other mechanisms unless absolutely necessary (e.g., platform-specific includes like `#include <Windows.h>` which should be kept contained in separate compilation units anyway).
+**Note**: Keep imports organized (standard library, third-party, local) but don't prevent import/include sorting with comments or other mechanisms unless absolutely necessary (e.g., platform-specific includes like `#include <Windows.h>` which should be kept contained in separate compilation units anyway). Don't add lines between includes and imports that would prevent automatic import organizers from doing their job, unless you need to.
 
 ### Type System
 - **Type hint everything**: Use the loosest constraints that satisfy requirements
@@ -90,6 +90,7 @@ _log = getLogger(__name__)
 - **Implementation comments**: Explain non-obvious design choices and main algorithm steps
 - **Concise language**: Use correct English but avoid unnecessary verbosity
 - **Attribution**: For complex modules/functions, include: "Initial version written by [model_name] on YYYY/MM/DD"
+- **Project-wide documentation**: If a project includes a documentation folder, reference, or any other documentation that exists outside the code, for users or developers, update it as needed after making changes
 
 ### Code Quality
 - **Input validation**: Validate user inputs with helpful error messages including expected vs actual values
