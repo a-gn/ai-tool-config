@@ -210,7 +210,6 @@ class DataProcessor:
         """Simple helper - no attribution needed."""
         return input_value * 2
 ```
-```
 
 ## Validation Workflow - MANDATORY
 
