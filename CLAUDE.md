@@ -1,211 +1,251 @@
-# Programming Guidelines and Preferences
+# Python Development Guidelines
 
-## General Coding Principles
+## Type System & Language Features
 
-- **Maintainability first**: Write code that clearly shows intent. Use descriptive names that help first-time readers understand the purpose. Don't abbreviate unless it would make things more readable. Be especially careful when abbreviating to one letter. Prefer full words when reasonable.
-- **Minimal scope changes**: Only modify what's needed for the specific task. Don't refactor unrelated code unless explicitly requested.
-- **Complete implementations**: Write full-featured code. If something can't be implemented, explicitly state what's missing rather than using placeholder functions or dummy return values.
-- **Pure functions preferred**: Use pure functions when applicable. Only introduce side effects (like in-place modifications) when there's a significant advantage in performance or maintainability. Always document side effects clearly.
-- **Simple solutions first**: Start with straightforward approaches before adding complexity.
-- **Dependencies at top**: All imports and includes must be at the top of files. Dependencies should be clearly visible and well-organized.
-- **Testable design**: Write code in small, focused units with clear interfaces to enable comprehensive testing.
-- **Deduplication**: Eliminate code duplication across all contexts and languages.
-- **Cross-platform code**: Write cross-platform code. If you must implement something platform-dependently, wrap it and isolate it from the rest of the code (e.g., separate compilation units with #ifs while keeping headers clean).
-- **Smart dependency strategy**: Prefer the standard library first, then established libraries (boost for C++). Prefer implementing utilities for things that can be easily implemented by us over pulling a new dependency. Use dependencies for truly valuable things like UI frameworks, optimization libraries, etc.
+```python
+from collections.abc import Mapping, Sequence
+from pathlib import Path
 
-## Code Validation Requirements
+# Type system examples - when to use Sequence vs specific types
+def process_items(input_items: tuple[str, ...] = ()) -> dict[str, int]:
+    """Process items with modern typing and immutable default."""
+    # Immutable default avoids mutable default trap
+    item_length_mapping: dict[str, int] = {}
+    for current_item in input_items:
+        item_length_mapping[current_item] = len(current_item)
+    return item_length_mapping
 
-- **Static analysis emphasis**: Make code as statically checkable as possible given the language to catch errors before runtime.
-- **Follow best practices**: Follow language-specific best practices and style guides. When unsure, fetch relevant documentation, PEPs, or language specifications.
-- **Fix all warnings**: Fix any warnings that appear during test runs, static analysis, or when running code (including developer warnings, deprecation warnings, etc.), unless they are another library's responsibility. This includes pytest warnings even when tests are passing.
-- **Tests must pass**: All tests must pass in both Python and C++ before finalizing code.
-- **Tool installation allowed**: Agents are permitted to install required tools (pyright, ruff, etc.) using the current environment (uv, etc.).
+def process_optional_items(input_items: list[str] | None) -> dict[str, int]:
+    """When None is meaningful, handle explicitly."""
+    if input_items is None:
+        return {}
+    return {current_item: len(current_item) for current_item in input_items}
 
-## Testing Requirements
+# Type system examples - when to use Sequence vs specific types
+def process_various_collections(
+    integer_values: Sequence[int],        # Good: int is not a sequence
+    float_measurements: Sequence[float],  # Good: float is not a sequence  
+    byte_data: Sequence[bytes],          # Good: bytes is not a sequence
+    name_list: tuple[str, ...],          # Immutable - avoid Sequence[str] since str is a sequence
+    config_mapping: Mapping[str, int]    # Good: use Mapping for dict-like inputs
+) -> tuple[tuple[int, ...], dict[str, float]]:
+    """Process various collection types showing proper type hints.
+    
+    Pure function with immutable inputs and outputs.
+    
+    @param integer_values: Any sequence of integers (list, tuple, etc.)
+    @param float_measurements: Any sequence of floats
+    @param byte_data: Any sequence of byte strings
+    @param name_list: Immutable tuple of strings (avoid Sequence[str])
+    @param config_mapping: Any mapping from strings to integers
+    @return: Processed integers and float statistics (both immutable)
+    """
+    # Process sequences where element type is not itself a sequence
+    processed_ints = tuple(value * 2 for value in integer_values)
+    
+    # For strings, be specific about tuple to avoid sequence confusion and ensure immutability
+    cleaned_names = tuple(name.strip() for name in name_list if len(name.strip()) > 0)
+    
+    # Mapping allows dict, defaultdict, etc. - return new dict (pure function)
+    statistics = {key: float(value) for key, value in config_mapping.items()}
+    
+    return processed_ints, statistics
+```
 
-- **Unit tests for critical functionality**: Write comprehensive unit tests for anything that matters to system correctness or business logic.
-- **Regression testing**: When fixing bugs or issues, add regression tests to prevent future recurrence if the issue could cause problems again.
-- **Instantaneous execution**: All tests must run as close to instantaneously as possible:
-  - No reliance on external executables unless absolutely necessary
-  - No requests to servers not controlled by the tests
-  - Use mocking/stubbing for external dependencies
-  - Focus on pure logic testing where possible
-- **Test isolation**: Each test should be independent and not rely on shared state.
+## Exception Handling & Logging
 
-## Python-Specific Requirements
-
-### Language Features
-- Python 3.12 features are allowed (not required), but prefer `|` for union types and built-in generic types (`list`, `dict`, etc.)
-- Minimize external dependencies: standard library first, then popular domain-specific libraries
-- Use `click` for CLI argument parsing with proper type hints and explicit conversions
-- Use `pathlib.Path` and `pathlib.PurePath` for path handling as warranted, supplemented by `os`, `shutil`, and `glob` as needed. Do not use `str` for paths unless warranted (e.g. converting for an outside library or manipulating S3 "paths").
-
-### Import Organization
 ```python
 import json
-import logging
-from pathlib import Path
-from typing import Sequence
-
-import click
-import numpy as np
-
-from .utils import helper_function
-from .models import DataModel
-```
-
-**Note**: Keep imports organized (standard library, third-party, local) but don't prevent import/include sorting with comments or other mechanisms unless absolutely necessary (e.g., platform-specific includes like `#include <Windows.h>` which should be kept contained in separate compilation units anyway). Don't add lines between includes and imports that would prevent automatic import organizers from doing their job, unless you need to.
-
-### Type System
-- **Type hint everything**: Use the loosest constraints that satisfy requirements
-- **Fill all generic type arguments**: Provide type arguments for all generics, not just collections (e.g., `Callable[[int, str], bool]`, `Sequence[float]`, `Mapping[str, list[int]]`)
-- **Immutable defaults**: Prefer `()` over `[]` for sequence defaults to avoid mutation traps
-- **Strict Optional handling**: Mark all variables that can be `None` using `| None` syntax
-- **Precise sequence types**: Don't use `Sequence[T]` for any T that itself is a `Sequence[T]`. Use `list[str]` or `tuple[str, ...]` instead of `Sequence[str]`
-- **Callable vs Protocol**: Use `Callable` for simple callbacks with few arguments, or whenever you think it makes more sense. For functions with more complex interfaces, use `Protocol`. You have leeway to do what you think is best.
-- **Callable type hints must guarantee**: Callable type hints for interfaces should guarantee that an argument that follows them actually provides what is needed.
-
-### Function Design
-- **Return value typing**: Functions returning multiple values should use either:
-  - Typed tuples with clear types for each value: `tuple[list[float], ProcessingMetadata]`
-  - Dataclasses with descriptive names for complex return data
-- **Dataclass usage**: Any grouping of values that needs to be passed around can be a dataclass. Only make function arguments a dataclass if there's a large set of them and grouping them makes logical sense. By default, stick with simple function signatures.
-
-### Error Handling and Logging
-```python
+import subprocess
 from logging import getLogger
+from pathlib import Path
+
 _log = getLogger(__name__)
+
+def read_config(config_path: Path) -> dict[str, str]:
+    """Read configuration file.
+    
+    @param config_path: Path to configuration file
+    @return: Configuration dictionary
+    @raises FileNotFoundError: If config file doesn't exist
+    @raises ValueError: If config format is invalid
+    """
+    # Conserve exception tracebacks with 'from'
+    try:
+        with config_path.open() as config_file:
+            configuration_data = json.load(config_file)
+    except json.JSONDecodeError as json_error:
+        raise ValueError(f"Invalid JSON in config file {config_path}: {json_error}") from json_error
+    except OSError as os_error:
+        raise FileNotFoundError(f"Cannot read config file {config_path}") from os_error
+    
+    _log.debug(f"Loaded config from {config_path}")
+    return configuration_data
+
+# Input validation with helpful messages
+def calculate_average(input_values: tuple[float, ...]) -> float:
+    """Calculate average of numeric values."""
+    if len(input_values) == 0:
+        raise ValueError("Cannot calculate average of empty sequence")
+    if any(current_value < 0 for current_value in input_values):
+        negative_values = [current_value for current_value in input_values if current_value < 0]
+        raise ValueError(f"All values must be non-negative, got: {negative_values}")
+    return sum(input_values) / len(input_values)
 ```
 
-- **Specific exception handling**: Only catch specific exception types at levels that can handle them
-- **Let exceptions propagate**: Don't catch indiscriminately unless explicitly requested
-- **Subprocess safety**: Always use `check=True` and log full CLI commands at DEBUG level
-- **Structured logging**: Use JSON format for complex debugging information
-- **Input validation**: Check constraints with clear `ValueError` messages that help fix the problem
+## CLI with Click
 
-### Documentation Requirements
-- **Comprehensive docstrings**: Document all functions, classes, and modules
-- **Parameter documentation**: Use `@param`, `@return`, and `@raises` style
-- **Array/tensor shapes**: Always document shapes, dtypes, and axis meanings
-- **Implementation comments**: Explain non-obvious design choices and main algorithm steps
-- **Concise language**: Use correct English but avoid unnecessary verbosity
-- **Attribution**: For complex modules/functions, include: "Initial version written by [model_name] on YYYY/MM/DD"
-- **Project-wide documentation**: If a project includes a documentation folder, reference, or any other documentation that exists outside the code, for users or developers, update it as needed after making changes
-
-### Code Quality
-- **Input validation**: Validate user inputs with helpful error messages including expected vs actual values
-- **Internal assertions**: Use `assert` for debugging internal consistency (assume disabled in production)
-- **Process exit codes**: Always check subprocess return codes and log command details
-- **Constraint documentation**: Clearly specify expected properties of arguments and guarantees about return values
-- **PEP8 compliance**: Follow PEP8 standards with 120-character line limit
-
-### Validation Workflow
-Before finalizing any Python code, run these commands and fix all issues:
-
-1. **Static type checking**: `pyright .` (standard mode, zero errors)
-2. **Linting**: `ruff check .` (zero errors)
-3. **Formatting and import sorting**: `ruff format . && ruff check --select I --fix .`
-4. **Test execution**: Run tests and ensure they pass with no warnings
-
-## C++ Requirements
-
-### Language Features
-- Use C++20 features and modern practices
-- Prefer standard library, then boost for additional functionality
-- Use CMake for build configuration
-
-### Code Quality Tools
-- **Formatting**: Use `clang-format` for consistent code formatting
-- **Static analysis**: Use `clang-tidy` for static analysis and linting
-- **Build system**: Use CMake with appropriate compiler flags
-- **Fix compilation warnings**: Address all compilation warnings, not just errors
-
-### Validation Workflow
-Before finalizing C++ code:
-
-1. **Static analysis**: Run `clang-tidy` and fix all warnings
-2. **Formatting**: Run `clang-format` to ensure consistent style
-3. **Build and test**: Ensure code compiles without warnings and all tests pass
-
-## CLI Development with Click
 ```python
 import click
 from pathlib import Path
 
 @click.command()
-@click.option('--input-file', type=click.Path(exists=True, path_type=Path), required=True, 
-              help='Path to input file. Must exist and be readable.')
-@click.option('--output-file', type=click.Path(path_type=Path), required=False,
-              help='Optional output file path.')
-@click.option('--threshold', type=float, default=0.5,
-              help='Threshold value between 0.0 and 1.0 (default: 0.5)')
-def main(input_file: Path, output_file: Path | None, threshold: float) -> None:
-    """Process input file with specified threshold."""
+@click.option('--input-file', type=click.Path(exists=True, path_type=Path), required=True)
+@click.option('--threshold', type=float, default=0.5, help='Threshold (0.0-1.0)')
+@click.option('--output-dir', type=click.Path(path_type=Path), help='Output directory')
+def main(input_file: Path, threshold: float, output_dir: Path | None) -> None:
+    """Process input file with threshold filtering.
+    
+    Click options must be: required=True, have default, or be | None.
+    """
+    # Explicit type conversion and validation (reassign since types match)
+    input_file = Path(input_file)  # Ensure proper Path type
+    threshold = float(threshold)   # Explicit conversion
+    output_dir = Path(output_dir) if output_dir is not None else None
+    
     if not 0.0 <= threshold <= 1.0:
-        raise click.BadParameter('Threshold must be between 0.0 and 1.0')
+        raise click.BadParameter(f'Threshold must be 0.0-1.0, got {threshold}')
+    
+    _log.debug(f"Processing {input_file} with threshold={threshold}")
+    
+    # Use converted types for type safety
+    process_file(input_file, threshold, output_dir)
 ```
 
-## Example Function Template
+## Subprocess Handling
+
 ```python
-from dataclasses import dataclass
-from logging import getLogger
-from typing import Sequence
-
-_log = getLogger(__name__)
-
-@dataclass
-class ProcessingMetadata:
-    """Metadata about data processing results."""
-    mean_value: float
-    std_deviation: float
-    total_windows: int
-    processing_time_ms: float
-
-def process_data(
-    input_data: Sequence[float], 
-    window_size: int,
-    normalize: bool = True
-) -> tuple[list[float], ProcessingMetadata]:
-    """Process numerical data with sliding window analysis.
+def run_command(command_arguments: tuple[str, ...], working_directory: Path | None = None) -> str:
+    """Run shell command safely.
     
-    Initial version written by Claude Sonnet 4 on 2025/08/15
-    
-    @param input_data: Sequence of numerical values to process. Must have at least 
-                      `window_size` elements.
-    @param window_size: Size of sliding window. Must be positive and <= len(input_data).
-    @param normalize: Whether to normalize results to [0, 1] range.
-    @return: Tuple of (processed_values, metadata) where metadata contains 
-             statistics about the processing.
-    @raises ValueError: If window_size is invalid or input_data is too short.
+    @param command_arguments: Command and arguments to execute
+    @param working_directory: Directory to run command in (None for current directory)
+    @return: Command stdout output
+    @raises subprocess.CalledProcessError: If command fails
     """
-    if window_size <= 0:
-        raise ValueError(f"window_size must be positive, got {window_size}")
-    if len(input_data) < window_size:
-        raise ValueError(
-            f"input_data length ({len(input_data)}) must be >= window_size ({window_size})"
-        )
+    _log.debug(f"Running command: {' '.join(command_arguments)}")
     
-    _log.debug(f"Processing {len(input_data)} values with window_size={window_size}")
-    
-    # Implementation here...
-    processed_values: list[float] = []
-    metadata = ProcessingMetadata(
-        mean_value=0.0,
-        std_deviation=0.0, 
-        total_windows=len(input_data) - window_size + 1,
-        processing_time_ms=0.0
+    # Always use check=True and capture output
+    command_result = subprocess.run(
+        command_arguments, 
+        cwd=working_directory, 
+        capture_output=True, 
+        text=True, 
+        check=True
     )
     
-    return processed_values, metadata
+    return command_result.stdout.strip()
 ```
 
-## Key Reminders
-- Ask for clarifications when requirements are unclear
-- Prefer explicit over implicit behavior
-- Document any performance trade-offs or design decisions
-- Use logging levels appropriately (DEBUG for internal details, INFO for user-relevant events)
-- Always validate inputs at function boundaries with helpful error messages
-- Write tests that execute instantly without external dependencies
-- Add regression tests when fixing issues that could recur
-- Keep all dependencies clearly visible and organized
-- Apply these principles consistently across all programming languages and contexts
+## Documentation Template
+
+```python
+def process_matrix(
+    matrix_data: tuple[tuple[float, ...], ...], 
+    processing_axis: int = 0,
+    should_normalize: bool = True
+) -> tuple[tuple[tuple[float, ...], ...], dict[str, float]]:
+    """Process 2D matrix with optional normalization.
+    
+    Originally written by Claude Sonnet 4 on 2025/08/22
+    
+    @param matrix_data: 2D matrix as tuple of rows. Shape: (n_rows, n_cols).
+                        All rows must have same length. Immutable for safety.
+    @param processing_axis: Axis along which to process (0=rows, 1=columns)
+    @param should_normalize: Whether to normalize to [0, 1] range
+    @return: Tuple of (processed_matrix, statistics_dict) where statistics contains
+             'mean', 'std', and 'range' statistics
+    @raises ValueError: If matrix_data is empty, ragged, or processing_axis is invalid
+    """
+    # Input validation with helpful messages
+    if len(matrix_data) == 0:
+        raise ValueError("Input matrix_data cannot be empty")
+    
+    row_lengths = [len(matrix_row) for matrix_row in matrix_data]
+    if len(set(row_lengths)) > 1:
+        raise ValueError(f"All rows must have same length, got lengths: {row_lengths}")
+    
+    if processing_axis not in (0, 1):
+        raise ValueError(f"processing_axis must be 0 or 1, got {processing_axis}")
+    
+    _log.debug(f"Processing {len(matrix_data)}x{len(matrix_data[0])} matrix along axis={processing_axis}")
+    
+    # Implementation...
+    processed_matrix_data: tuple[tuple[float, ...], ...] = ()
+    processing_statistics: dict[str, float] = {"mean": 0.0, "std": 0.0, "range": 0.0}
+    
+    return processed_matrix_data, processing_statistics
+
+
+## Attribution Requirements
+
+Add "Originally written by [model_name] on YYYY/MM/DD" to:
+- **Modules**: At top of file docstring
+- **Non-trivial functions/classes**: In docstring (prefer larger scopes)
+- **Significant code units**: Any substantial implementation Claude creates
+
+```python
+"""Data processing utilities module.
+
+Originally written by Claude Sonnet 4 on 2025/08/22
+"""
+
+class DataProcessor:
+    """Main data processing class.
+    
+    Originally written by Claude Sonnet 4 on 2025/08/22
+    """
+    
+    def simple_helper(self, input_value: int) -> int:
+        """Simple helper - no attribution needed."""
+        return input_value * 2
+```
+```
+
+## Validation Workflow - MANDATORY
+
+Run when making large changes, opening PRs, or when validation is needed:
+
+```bash
+# 1. Tests with warnings as errors
+pytest -v --tb=short -W error::UserWarning
+
+# 2. Type checking (standard mode)
+pyright
+
+# 3. Linting and formatting
+ruff check
+ruff format
+ruff check --select I --fix  # Import sorting
+```
+
+All must pass without errors.
+
+## Project Setup with uv
+
+For new Python projects, use `uv` for fast dependency management:
+
+```bash
+# Create new project
+uv init my-project
+cd my-project
+
+# Add dependencies
+uv add click pathlib-extensions
+
+# Add development dependencies  
+uv add --dev pytest pyright ruff
+
+# Install and run
+uv run python -m my_project
+```
