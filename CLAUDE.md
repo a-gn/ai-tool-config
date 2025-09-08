@@ -3,8 +3,16 @@
 ## Type System & Language Features
 
 ```python
+"""Module documentation."""
+
+# Imports at the top, no optional imports, nothing between import lines, all imports in one block
+# PEP8 followed: standard library, then external packages, then project-internal stuff
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+
+from external_lib import external_thing
+
+from current_project import internal_thing
 
 # Type system examples - when to use Sequence vs specific types
 def process_items(input_items: tuple[str, ...] = ()) -> dict[str, int]:
@@ -26,7 +34,7 @@ def process_various_collections(
     integer_values: Sequence[int],        # Good: int is not a sequence
     float_measurements: Sequence[float],  # Good: float is not a sequence  
     byte_data: Sequence[bytes],          # Good: bytes is not a sequence
-    name_list: tuple[str, ...],          # Immutable - avoid Sequence[str] since str is a sequence
+    name_list: tuple[str, ...],          # Immutable - avoid Sequence[str] since str is itself a Sequence[str]
     config_mapping: Mapping[str, int]    # Good: use Mapping for dict-like inputs
 ) -> tuple[tuple[int, ...], dict[str, float]]:
     """Process various collection types showing proper type hints.
@@ -211,25 +219,6 @@ class DataProcessor:
         return input_value * 2
 ```
 
-## Validation Workflow - MANDATORY
-
-Run when making large changes, opening PRs, or when validation is needed:
-
-```bash
-# 1. Tests with warnings as errors
-pytest -v --tb=short -W error::UserWarning
-
-# 2. Type checking (standard mode)
-pyright
-
-# 3. Linting and formatting
-ruff check
-ruff format
-ruff check --select I --fix  # Import sorting
-```
-
-All must pass without errors.
-
 ## Project Setup with uv
 
 For new Python projects, use `uv` for fast dependency management:
@@ -248,3 +237,23 @@ uv add --dev pytest pyright ruff
 # Install and run
 uv run python -m my_project
 ```
+
+## Validation Workflow - IMPORTANT
+
+After large changes, before committing, before PRs, if I ask you to validate, or if there's a good chance that some of this is broken:
+
+```bash
+
+# 1. Type checking (standard mode)
+pyright
+
+# 2. Linting and formatting
+ruff check
+ruff format
+ruff check --select I --fix  # Import sorting
+
+# 3. Tests with warnings as errors
+pytest -v --tb=short -W error::UserWarning
+```
+
+All must pass without errors.
