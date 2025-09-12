@@ -48,15 +48,16 @@ from external_lib import external_thing
 
 from current_project import internal_thing
 
-# Type system examples
+# Immutable argument types and defaults: `Sequence[]` or `tuple[]` over `list[]`, for example
+# Also, avoid `| None` unless required. The empty case is well-represented by an empty collection here
 def process_items(input_items: tuple[str, ...] = ()) -> dict[str, int]:
     """Process items with modern typing and immutable default."""
-    # Immutable default avoids mutable default trap
     item_length_mapping: dict[str, int] = {}
     for current_item in input_items:
         item_length_mapping[current_item] = len(current_item)
     return item_length_mapping
 
+# Here the absence of a collection is different from an empty collection, it has meaning. We use `| None`
 def process_optional_items(input_items: tuple[str, ...] | None) -> dict[str, int]:
     """When None is meaningful, handle explicitly."""
     if input_items is None:
@@ -66,7 +67,7 @@ def process_optional_items(input_items: tuple[str, ...] | None) -> dict[str, int
 # Type system examples - when to use Sequence vs specific types
 def process_various_collections(
     integer_values: Sequence[int],        # Good: int is not a sequence
-    float_measurements: Sequence[float],  # Good: float is not a sequence  
+    float_measurements: Sequence[float],  # Good: float is not a sequence
     byte_data: Sequence[bytes],          # Good: bytes is not a sequence
     name_list: tuple[str, ...],          # Immutable - avoid Sequence[str] since str is itself a Sequence[str]
     config_mapping: Mapping[str, int]    # Good: use Mapping for dict-like inputs
@@ -92,6 +93,18 @@ def process_various_collections(
     statistics = {key: float(value) for key, value in config_mapping.items()}
     
     return processed_ints, statistics
+
+# Non-pure function: make it clear what the side-effects are. Mutable argument type is necessary, so accepted
+def add_integer_sequence_to_list(list_to_modify: list[float], maximum_integer: int) -> None:
+    """Modify a list in-place to add numbers to it.
+    
+    @param list_to_modify The collection to which we will add numbers. It will be modified in place.
+    @param maximum_integer We will add integers from 0 to this one, included. Must be strictly positive.
+    """
+
+    if maximum_integer <= 0:
+        raise ValueError(f"maximum_integer must be strictly positive, we got {maximum_integer}")
+    list_to_modify.extend(range(0, maximum_integer + 1))
 ```
 
 ### Exception Handling & Logging
