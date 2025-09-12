@@ -24,7 +24,7 @@ Always document the constraints on a unit's inputs and check those constraints. 
 
 ### Simplicity
 
-When you design a piece of code, review the design and try to remove as much code and complexity as possible while still performing your task. When you add code, check if you can reuse or extend existing pieces first. If a piece of code becomes complex, see if you can either simplify it or break it into simpler pieces. The goal is to make minimal additions and not accumulate lines of code when not needed.
+When you design a piece of code or make large changes, think about how to keep the result as simple and concise as possible. Check if you can re-use or extend existing units of code before writing new ones. You should lean towards short diffs, factoring, and removing lines by default.
 
 ## Python Development Guidelines
 
