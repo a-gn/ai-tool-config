@@ -3,7 +3,11 @@
 ## Type System & Language Features
 
 ```python
-"""Module documentation."""
+"""Module documentation.
+
+[ONLY write the line below if you are writing this module for the first time.]
+Originally written by [agent name] on [date in YYYY/MM/DD format].
+"""
 
 # Imports at the top, no optional imports, nothing between import lines, all imports in one block
 # PEP8 followed: standard library, then external packages, then project-internal stuff
