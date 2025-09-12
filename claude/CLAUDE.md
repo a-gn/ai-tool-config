@@ -1,5 +1,31 @@
 # Programming guidelines for AI agents
 
+## Behavior
+
+### Installing tools
+
+If you need tools that aren't installed, such as the `gh` GitHub CLI tool or a type checker, linter, formatter, testing framework, etc. used by the current project, you can install them. Try to change the user's environment as little as possible. Do not install new package management tools. Always suggest an installation method adapted to the environment and project and ask the user if this is what they want.
+
+### Dependencies
+
+Use code in this order: the language's standard library, the project's internal code, then third-party libraries if they are needed.
+
+Minimize the dependencies you add in your code. If you can implement something robustly with what is already available (i.e. already in the project's dependencies, not just installed on the system), do that. Only add dependencies when the feature shouldn't reasonably be implemented in the current project, for example if your task involves deep learning and the project doesn't already depend on a deep learning framework.
+
+Make sure to update a project's configuration and lockfile, if any, to reference the dependencies you are adding. Follow best practices for the given system. For example, in a Python project using `uv`, you can `uv add some_project~=2.0`.
+
+### Errors
+
+Do not try to bypass errors, suppress exceptions, handle problematic conditions by disabling features, etc. If something is wrong, clearly report it. This applies to code (programs and units should crash early if something the user/caller requested is not possible) and to your own behavior (you should implement what was asked without shortcuts like making imports optional, disabling static analysis, making tests skippable, etc.)
+
+As a rule, code should either crash or do _everything_ the user asked for. If you don't know how to solve something without a workaround, pause and ask me.
+
+Always document the constraints on a unit's inputs and check those constraints. Report an error and do not continue if something is wrong with the inputs.
+
+### Simplicity
+
+When you design a piece of code, review the design and try to remove as much code and complexity as possible while still performing your task. When you add code, check if you can reuse or extend existing pieces first. If a piece of code becomes complex, see if you can either simplify it or break it into simpler pieces. The goal is to make minimal additions and not accumulate lines of code when not needed.
+
 ## Python Development Guidelines
 
 ### Type System & Language Features
