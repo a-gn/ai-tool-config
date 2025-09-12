@@ -1,6 +1,8 @@
-# Python Development Guidelines
+# Programming guidelines for AI agents
 
-## Type System & Language Features
+## Python Development Guidelines
+
+### Type System & Language Features
 
 ```python
 """Module documentation.
@@ -9,8 +11,10 @@
 Originally written by [agent name] on [date in YYYY/MM/DD format].
 """
 
-# Imports at the top, no optional imports, nothing between import lines, all imports in one block
-# PEP8 followed: standard library, then external packages, then project-internal stuff
+# Imports ALWAYS at the top
+# No optional imports, no `except ImportError`, just let Python handle it
+# Nothing between import lines, all imports in one block, so that import sorters work
+# Standard library, then external packages, then project-internal stuff
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
@@ -18,7 +22,7 @@ from external_lib import external_thing
 
 from current_project import internal_thing
 
-# Type system examples - when to use Sequence vs specific types
+# Type system examples
 def process_items(input_items: tuple[str, ...] = ()) -> dict[str, int]:
     """Process items with modern typing and immutable default."""
     # Immutable default avoids mutable default trap
@@ -27,7 +31,7 @@ def process_items(input_items: tuple[str, ...] = ()) -> dict[str, int]:
         item_length_mapping[current_item] = len(current_item)
     return item_length_mapping
 
-def process_optional_items(input_items: list[str] | None) -> dict[str, int]:
+def process_optional_items(input_items: tuple[str, ...] | None) -> dict[str, int]:
     """When None is meaningful, handle explicitly."""
     if input_items is None:
         return {}
@@ -64,7 +68,11 @@ def process_various_collections(
     return processed_ints, statistics
 ```
 
-## Exception Handling & Logging
+### Exception Handling & Logging
+
+ALWAYS let exceptions percolate up by default. Do NOT suppress errors.
+
+Only suppress an exception and use `_log.warning(...)` if EVERYTHING the user asked for can still be done. If any part of it is compromised, raiee instead. Warnings are for recoverable conditions.
 
 ```python
 import json
@@ -90,6 +98,7 @@ def read_config(config_path: Path) -> dict[str, str]:
         raise ValueError(f"Invalid JSON in config file {config_path}: {json_error}") from json_error
     except OSError as os_error:
         raise FileNotFoundError(f"Cannot read config file {config_path}") from os_error
+    # NO `except Exception`, let exceptions you didn't plan for percolate up
     
     _log.debug(f"Loaded config from {config_path}")
     return configuration_data
@@ -103,9 +112,13 @@ def calculate_average(input_values: tuple[float, ...]) -> float:
         negative_values = [current_value for current_value in input_values if current_value < 0]
         raise ValueError(f"All values must be non-negative, got: {negative_values}")
     return sum(input_values) / len(input_values)
+
+def main():
+    # NO global `try: ... except Exception: ...` that just prints errors, let Python show a stack trace
+    config = read_config("./config_path.json")
 ```
 
-## CLI with Click
+### CLI with Click
 
 ```python
 import click
@@ -134,7 +147,7 @@ def main(input_file: Path, threshold: float, output_dir: Path | None) -> None:
     process_file(input_file, threshold, output_dir)
 ```
 
-## Subprocess Handling
+### Subprocess Handling
 
 ```python
 def run_command(command_arguments: tuple[str, ...], working_directory: Path | None = None) -> str:
@@ -145,7 +158,8 @@ def run_command(command_arguments: tuple[str, ...], working_directory: Path | No
     @return: Command stdout output
     @raises subprocess.CalledProcessError: If command fails
     """
-    _log.debug(f"Running command: {' '.join(command_arguments)}")
+    # use JSON to log complex data precisely for reproduction
+    _log.debug(f"Running command (logged as JSON): {json.dumps(command_arguments)}")
     
     # Always use check=True and capture output
     command_result = subprocess.run(
@@ -159,7 +173,7 @@ def run_command(command_arguments: tuple[str, ...], working_directory: Path | No
     return command_result.stdout.strip()
 ```
 
-## Documentation Template
+### Documentation Template
 
 ```python
 def process_matrix(
@@ -197,9 +211,9 @@ def process_matrix(
     processing_statistics: dict[str, float] = {"mean": 0.0, "std": 0.0, "range": 0.0}
     
     return processed_matrix_data, processing_statistics
+```
 
-
-## Attribution Requirements
+### Attribution Requirements
 
 Add "Originally written by [model_name] on YYYY/MM/DD" to:
 - **Modules**: At top of file docstring
@@ -223,7 +237,7 @@ class DataProcessor:
         return input_value * 2
 ```
 
-## Project Setup with uv
+### Project Setup with uv
 
 For new Python projects, use `uv` for fast dependency management:
 
@@ -242,7 +256,7 @@ uv add --dev pytest pyright ruff
 uv run python -m my_project
 ```
 
-## Validation Workflow - IMPORTANT
+### Validation Workflow - IMPORTANT
 
 After large changes, before committing, before PRs, if I ask you to validate, or if there's a good chance that some of this is broken:
 
@@ -260,4 +274,4 @@ ruff check --select I --fix  # Import sorting
 pytest -v --tb=short -W error::UserWarning
 ```
 
-All must pass without errors.
+Make sure that all are fixed before continuing. Run them again after fixes to make sure that fixing one doesn't break the others.
