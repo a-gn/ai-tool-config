@@ -1,1 +1,1 @@
-Please re-read all your instructions, including `CLAUDE.md`, fetch any remote instructions they reference, and make sure that your current changes are compliant with all of it.
+Please re-read all your instructions, including `CLAUDE.md` and any remote files they reference. Read your changes in the current project and check if they are compliant with all instructions. Fix them and summarize the violations to me, with a short description of what you did about them.
