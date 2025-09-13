@@ -127,22 +127,14 @@ find_claude_config_dir() {
 # Check if destination exists and handle conflicts
 handle_existing_config() {
     local config_dir="$1"
-    local conflicts=()
 
-    if [[ -f "$config_dir/CLAUDE.md" ]]; then
-        conflicts+=("$config_dir/CLAUDE.md")
-    fi
-    if [[ -d "$config_dir/commands" ]]; then
-        conflicts+=("$config_dir/commands")
-    fi
-
-    if [[ ${#conflicts[@]} -gt 0 ]]; then
-        print_warn "Found existing configuration files:"
-        printf '%s\n' "${conflicts[@]}"
+    # Check if config directory exists and has any content
+    if [[ -d "$config_dir" ]] && [[ -n "$(ls -A "$config_dir" 2>/dev/null)" ]]; then
+        print_warn "Found existing Claude configuration directory: $config_dir"
 
         echo
         echo "Choose an option:"
-        echo "1) Backup existing files and overwrite"
+        echo "1) Backup existing configuration and overwrite"
         echo "2) Abort installation"
 
         local choice
@@ -150,33 +142,19 @@ handle_existing_config() {
 
         case $choice in
             1)
-                local backup_dir="$config_dir/backup_$(date +%Y%m%d_%H%M%S)"
-                mkdir -p "$backup_dir"
-                print_info "Backup directory created: $backup_dir"
-
-                # Build backup command
-                local backup_files=()
-                for file in "${conflicts[@]}"; do
-                    if [[ -e "$file" ]]; then
-                        backup_files+=("$file")
-                    fi
-                done
-
-                if [[ ${#backup_files[@]} -gt 0 ]]; then
-                    echo
-                    print_info "The following backup command will be executed:"
-                    echo "  mv $(printf '%q ' "${backup_files[@]}") $(printf '%q' "$backup_dir")/"
-                    echo
-                    if ask_confirmation "Execute this backup command?" "N"; then
-                        print_info "Executing backup command..."
-                        for file in "${backup_files[@]}"; do
-                            mv "$file" "$backup_dir/"
-                            print_info "Backed up: $(basename "$file")"
-                        done
-                    else
-                        print_error "Backup declined, cannot proceed with installation"
-                        exit 1
-                    fi
+                local backup_dir="$HOME/.claude_backup_$(date +%Y%m%d_%H%M%S)"
+                print_info "The following backup command will be executed:"
+                echo "  mv $(printf '%q' "$config_dir") $(printf '%q' "$backup_dir")"
+                echo
+                if ask_confirmation "Execute this backup command?" "N"; then
+                    print_info "Executing backup command..."
+                    mv "$config_dir" "$backup_dir"
+                    print_info "Backed up entire configuration to: $backup_dir"
+                    # Recreate the config directory
+                    mkdir -p "$config_dir"
+                else
+                    print_error "Backup declined, cannot proceed with installation"
+                    exit 1
                 fi
                 ;;
             2)
@@ -184,7 +162,7 @@ handle_existing_config() {
                 exit 0
                 ;;
             *)
-                print_error "Invalid choice"
+                print_error "Invalid choice: $choice"
                 exit 1
                 ;;
         esac
