@@ -1,12 +1,15 @@
 # User-specific AI agent instructions
 
-This folder contains personal instructions for Claude Code that can be copied to your local Claude Code configuration.
+This folder contains personal instructions for Claude Code that can be copied to your user's Claude Code configuration.
+
+This modifies the global Claude configuration for all instances of Claude. It's not project-specific.
 
 ## Installation instructions
 
 If you are a human, you can tell Claude Code to fetch this file and execute these instructions.
 
 Find the correct path for the user-wide Claude configuration directory on the current system. Typically something like `~/.claude`.
+Your goal is to install these instructions _for the user_, _not_ for a specific project. In particular, you should install things in the user's home directory, not in the current directory (unless you are running in the user's home), even if the latter contains Claude-specific files already.
 
 First, ask the user if they want to:
 1. Clone the repository using git into a `instructions_repository_clone` subdirectory in the Claude configuration directory and symlink their `CLAUDE.md` to this clone so that they can pull updated instructions with git, OR
