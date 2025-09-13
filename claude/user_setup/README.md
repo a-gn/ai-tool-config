@@ -6,11 +6,11 @@ This folder contains personal instructions for Claude Code that can be copied to
 
 If you are a human, you can tell Claude Code to fetch this file and execute these instructions.
 
-First, ask the user if they want to:
-1. Clone the repository using git into `$CLAUDE_CONFIG_FOLDER/instructions_repository_clone` and symlink their `CLAUDE.md` to this clone so that they can pull updated instructions with git, OR
-2. Fetch the instructions once and install them as simple files
-
 Find the correct path for the user-wide Claude configuration directory on the current system. Typically something like `~/.claude`.
+
+First, ask the user if they want to:
+1. Clone the repository using git into a `instructions_repository_clone` subdirectory in the Claude configuration directory and symlink their `CLAUDE.md` to this clone so that they can pull updated instructions with git, OR
+2. Fetch the instructions once and install them as simple files
 
 Then proceed with the chosen method:
 
