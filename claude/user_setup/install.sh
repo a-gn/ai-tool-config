@@ -41,13 +41,7 @@ trap cleanup EXIT
 
 # Find Claude configuration directory
 find_claude_config_dir() {
-    if [[ -n "${CLAUDE_CONFIG_DIR:-}" ]]; then
-        echo "$CLAUDE_CONFIG_DIR"
-    elif [[ -d "$HOME/.claude" ]]; then
-        echo "$HOME/.claude"
-    else
-        echo "$HOME/.claude"
-    fi
+    echo "$HOME/.claude"
 }
 
 # Check if destination exists and handle conflicts

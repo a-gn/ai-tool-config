@@ -25,7 +25,7 @@ chmod +x install.sh
 The script will:
 1. Download the repository to a temporary directory
 2. Check for existing Claude configuration and offer to back it up
-3. Install the user-wide configuration to `~/.claude` (or `$CLAUDE_CONFIG_DIR`)
+3. Install the user-wide configuration to `~/.claude`
 4. Clean up temporary files
 
 After installation, Claude will use these instructions for all projects that don't have their own `CLAUDE.md` file.
