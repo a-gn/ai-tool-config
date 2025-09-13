@@ -10,6 +10,8 @@ First, ask the user if they want to:
 1. Clone the repository using git into `$CLAUDE_CONFIG_FOLDER/instructions_repository_clone` and symlink their `CLAUDE.md` to this clone so that they can pull updated instructions with git, OR
 2. Fetch the instructions once and install them as simple files
 
+Find the correct path for the user-wide Claude configuration directory on the current system. Typically something like `~/.claude`.
+
 Then proceed with the chosen method:
 
 Always clean up any temporary files you've created while doing this, whether you succeed or abort.
@@ -22,7 +24,7 @@ VERY IMPORTANT: ONLY delete or modify files that you created. At NO POINT should
 4. If you are not sure that you won't destroy files that you did not create yourself, DO NOT REMOVE ANYTHING and tell the user what the problem is.
 
 **Method 1 (Git clone with symlinks):**
-- Clone the repository into `$CLAUDE_CONFIG_FOLDER/instructions_repository_clone`
+- Clone the repository into a `instructions_repository_clone` subfolder in the user 
 - Before creating any symlinks, check for existing files and ask for confirmation:
   - For each symlink to be created, show the full absolute path of both the source and target
   - Ask: "I will create a symlink from [full target path] to [full source path]. This will [overwrite existing file/create new file]. Do you want to proceed? (yes/no)"
