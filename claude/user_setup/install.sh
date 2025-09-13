@@ -15,6 +15,90 @@ print_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 print_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
+# Robust user input function that works in various environments
+ask_user() {
+    local prompt="$1"
+    local default="${2:-}"
+    local response=""
+
+    # Check if we can get user input
+    if [[ -t 0 ]] && [[ -n "${TERM:-}" ]]; then
+        # Standard interactive terminal
+        read -p "$prompt" response
+    elif [[ -e /dev/tty ]]; then
+        # Try to read from TTY
+        if read -p "$prompt" response < /dev/tty 2>/dev/null; then
+            true  # Success
+        else
+            response="$default"
+            if [[ -n "$default" ]]; then
+                print_warn "Non-interactive environment detected, using default: $default"
+            else
+                print_error "Cannot get user input in non-interactive environment"
+                exit 1
+            fi
+        fi
+    else
+        # No TTY available - use default or exit
+        response="$default"
+        if [[ -n "$default" ]]; then
+            print_warn "No TTY available, using default: $default"
+        else
+            print_error "Cannot get user input - no TTY available"
+            exit 1
+        fi
+    fi
+
+    echo "$response"
+}
+
+# Ask user for confirmation with default
+ask_confirmation() {
+    local prompt="$1"
+    local default="${2:-N}"
+
+    local full_prompt
+    if [[ "$default" == "y" || "$default" == "Y" ]]; then
+        full_prompt="$prompt (Y/n): "
+    else
+        full_prompt="$prompt (y/N): "
+    fi
+
+    local response
+    response=$(ask_user "$full_prompt" "$default")
+
+    case "$response" in
+        [Yy]*) return 0 ;;
+        [Nn]*) return 1 ;;
+        "")
+            case "$default" in
+                [Yy]*) return 0 ;;
+                *) return 1 ;;
+            esac
+            ;;
+        *) return 1 ;;
+    esac
+}
+
+# Ask user for choice with default
+ask_choice() {
+    local prompt="$1"
+    local default="$2"
+    shift 2
+    local choices=("$@")
+
+    local full_prompt="$prompt (1-${#choices[@]})"
+    if [[ -n "$default" ]]; then
+        full_prompt="$full_prompt [default: $default]"
+    fi
+    full_prompt="$full_prompt: "
+
+    local response
+    response=$(ask_user "$full_prompt" "$default")
+
+    echo "$response"
+}
+
 # Clean up function
 cleanup() {
     if [[ -n "${CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR:-}" && -d "$CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR" ]]; then
@@ -22,19 +106,15 @@ cleanup() {
         print_info "Cleanup - temporary directory to be deleted:"
         echo "  $CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR"
         echo
-        read -p "Execute this cleanup command? (y/N): " confirm
-        case $confirm in
-            [Yy]*)
-                print_info "Executing cleanup: rm -rf $(printf '%q' "$CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR")"
-                rm -rf "$CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR"
-                print_info "Cleanup completed"
-                ;;
-            *)
-                print_warn "Cleanup skipped. You may need to manually delete:"
-                echo "  $CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR"
-                print_info "To delete manually, run: rm -rf $(printf '%q' "$CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR")"
-                ;;
-        esac
+        if ask_confirmation "Execute this cleanup command?" "N"; then
+            print_info "Executing cleanup: rm -rf $(printf '%q' "$CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR")"
+            rm -rf "$CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR"
+            print_info "Cleanup completed"
+        else
+            print_warn "Cleanup skipped. You may need to manually delete:"
+            echo "  $CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR"
+            print_info "To delete manually, run: rm -rf $(printf '%q' "$CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR")"
+        fi
     fi
 }
 trap cleanup EXIT
@@ -64,7 +144,9 @@ handle_existing_config() {
         echo "Choose an option:"
         echo "1) Backup existing files and overwrite"
         echo "2) Abort installation"
-        read -p "Enter choice (1-2): " choice
+
+        local choice
+        choice=$(ask_choice "Enter choice" "2" "Backup and overwrite" "Abort installation")
 
         case $choice in
             1)
@@ -85,20 +167,16 @@ handle_existing_config() {
                     print_info "The following backup command will be executed:"
                     echo "  mv $(printf '%q ' "${backup_files[@]}") $(printf '%q' "$backup_dir")/"
                     echo
-                    read -p "Execute this backup command? (y/N): " backup_confirm
-                    case $backup_confirm in
-                        [Yy]*)
-                            print_info "Executing backup command..."
-                            for file in "${backup_files[@]}"; do
-                                mv "$file" "$backup_dir/"
-                                print_info "Backed up: $(basename "$file")"
-                            done
-                            ;;
-                        *)
-                            print_error "Backup declined, cannot proceed with installation"
-                            exit 1
-                            ;;
-                    esac
+                    if ask_confirmation "Execute this backup command?" "N"; then
+                        print_info "Executing backup command..."
+                        for file in "${backup_files[@]}"; do
+                            mv "$file" "$backup_dir/"
+                            print_info "Backed up: $(basename "$file")"
+                        done
+                    else
+                        print_error "Backup declined, cannot proceed with installation"
+                        exit 1
+                    fi
                 fi
                 ;;
             2)
@@ -205,7 +283,9 @@ main() {
     echo "Choose installation method:"
     echo "1) Git clone with symlinks (allows easy updates with git pull)"
     echo "2) Simple file copy (static installation)"
-    read -p "Enter choice (1-2): " choice
+
+    local choice
+    choice=$(ask_choice "Enter choice" "1" "Git clone with symlinks" "Simple file copy")
 
     case $choice in
         1)
@@ -215,7 +295,7 @@ main() {
             install_with_file_copy "$config_dir"
             ;;
         *)
-            print_error "Invalid choice"
+            print_error "Invalid choice: $choice"
             exit 1
             ;;
     esac
