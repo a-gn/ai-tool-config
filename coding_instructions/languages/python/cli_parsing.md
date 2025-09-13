@@ -5,6 +5,9 @@
 ```python
 import click
 from pathlib import Path
+from logging import getLogger
+
+_log = getLogger(__name__)
 
 @click.command()
 @click.option('--input-file', type=click.Path(exists=True, path_type=Path), required=True)

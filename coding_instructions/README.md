@@ -10,4 +10,4 @@
 
 ## Language-Specific Guidelines
 
-Read language-specific instructions in `./languages`. Decide what to load based on filenames. For example, typing and documentation rules are always needed, but subprocess-specific instructions are only to be read when you write code that starts subprocesses.
+@languages/python/README.md
