@@ -113,9 +113,40 @@ handle_existing_config() {
     fi
 }
 
-# Main installation
-main() {
-    print_info "Installing user-wide Claude Code configuration..."
+# Install via git clone with symlinks
+install_with_git_clone() {
+    local config_dir="$1"
+    local repo_dir="$config_dir/instructions_repository_clone"
+
+    print_info "Installing via git clone with symlinks..."
+
+    # Clone repository
+    print_info "Cloning repository to: $repo_dir"
+    git clone https://github.com/a-gn/ai-tool-config.git "$repo_dir"
+
+    # Create symlinks
+    local user_setup_dir="$repo_dir/claude/user_setup"
+
+    if [[ -f "$user_setup_dir/CLAUDE.md" ]]; then
+        print_info "Creating symlink: CLAUDE.md"
+        ln -sf "$user_setup_dir/CLAUDE.md" "$config_dir/CLAUDE.md"
+    fi
+
+    if [[ -d "$user_setup_dir/commands" ]]; then
+        print_info "Creating symlink: commands/"
+        ln -sf "$user_setup_dir/commands" "$config_dir/commands"
+    fi
+
+    print_info "✓ Git clone installation completed!"
+    print_info "Repository cloned to: $repo_dir"
+    print_info "To update instructions: cd $repo_dir && git pull"
+}
+
+# Install via file copy
+install_with_file_copy() {
+    local config_dir="$1"
+
+    print_info "Installing via file copy..."
 
     # Create temporary directory
     CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR=$(mktemp -d)
@@ -147,6 +178,17 @@ main() {
         print_info "Removed: $source_dir/install.sh"
     fi
 
+    # Copy files to destination
+    print_info "Installing configuration files..."
+    cp -r "$source_dir"/* "$config_dir/"
+
+    print_info "✓ File copy installation completed!"
+}
+
+# Main installation
+main() {
+    print_info "Installing user-wide Claude Code configuration..."
+
     # Find destination directory
     local config_dir
     config_dir=$(find_claude_config_dir)
@@ -158,11 +200,26 @@ main() {
     # Handle existing configuration
     handle_existing_config "$config_dir"
 
-    # Copy files to destination
-    print_info "Installing configuration files..."
-    cp -r "$source_dir"/* "$config_dir/"
+    # Ask user for installation method
+    echo
+    echo "Choose installation method:"
+    echo "1) Git clone with symlinks (allows easy updates with git pull)"
+    echo "2) Simple file copy (static installation)"
+    read -p "Enter choice (1-2): " choice
 
-    print_info "✓ User-wide Claude Code configuration installed successfully!"
+    case $choice in
+        1)
+            install_with_git_clone "$config_dir"
+            ;;
+        2)
+            install_with_file_copy "$config_dir"
+            ;;
+        *)
+            print_error "Invalid choice"
+            exit 1
+            ;;
+    esac
+
     print_info "Configuration directory: $config_dir"
 }
 

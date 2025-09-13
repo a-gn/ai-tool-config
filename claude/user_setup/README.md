@@ -6,8 +6,6 @@ This modifies the global Claude configuration for all instances of Claude. It's 
 
 ## Installation instructions
 
-If you are a human, you can tell Claude Code to fetch this file by URL and follow the installation instructions.
-
 Run the installation script:
 
 ```bash
@@ -22,10 +20,22 @@ chmod +x install.sh
 ./install.sh
 ```
 
-The script will:
-1. Download the repository to a temporary directory
-2. Check for existing Claude configuration and offer to back it up
-3. Install the user-wide configuration to `~/.claude`
-4. Clean up temporary files
+The script will offer two installation methods:
+
+**Option 1: Git clone with symlinks** (recommended)
+- Clones the repository to `~/.claude/instructions_repository_clone/`
+- Creates symlinks from `~/.claude/CLAUDE.md` and `~/.claude/commands/` to the cloned repo
+- Allows easy updates with `cd ~/.claude/instructions_repository_clone && git pull`
+- Keeps files in sync with the latest changes
+
+**Option 2: Simple file copy**
+- Downloads and copies files directly to `~/.claude/`
+- Static installation - no automatic updates
+- Simpler if you don't need updates
+
+Both methods will:
+1. Check for existing Claude configuration and offer to back it up
+2. Install the user-wide configuration to `~/.claude/`
+3. Clean up temporary files
 
 After installation, Claude will use these instructions for all projects that don't have their own `CLAUDE.md` file.
