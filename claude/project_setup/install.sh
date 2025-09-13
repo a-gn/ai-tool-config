@@ -16,87 +16,11 @@ print_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 print_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-# Robust user input function that works in various environments
+# Simple user input using TTY
 ask_user() {
     local prompt="$1"
-    local default="${2:-}"
     local response=""
-
-    # Check if we can get user input
-    if [[ -t 0 ]] && [[ -n "${TERM:-}" ]]; then
-        # Standard interactive terminal
-        read -p "$prompt" response
-    elif [[ -e /dev/tty ]]; then
-        # Try to read from TTY
-        if read -p "$prompt" response < /dev/tty 2>/dev/null; then
-            true  # Success
-        else
-            response="$default"
-            if [[ -n "$default" ]]; then
-                print_warn "Non-interactive environment detected, using default: $default"
-            else
-                print_error "Cannot get user input in non-interactive environment"
-                exit 1
-            fi
-        fi
-    else
-        # No TTY available - use default or exit
-        response="$default"
-        if [[ -n "$default" ]]; then
-            print_warn "No TTY available, using default: $default"
-        else
-            print_error "Cannot get user input - no TTY available"
-            exit 1
-        fi
-    fi
-
-    echo "$response"
-}
-
-# Ask user for confirmation with default
-ask_confirmation() {
-    local prompt="$1"
-    local default="${2:-N}"
-
-    local full_prompt
-    if [[ "$default" == "y" || "$default" == "Y" ]]; then
-        full_prompt="$prompt (Y/n): "
-    else
-        full_prompt="$prompt (y/N): "
-    fi
-
-    local response
-    response=$(ask_user "$full_prompt" "$default")
-
-    case "$response" in
-        [Yy]*) return 0 ;;
-        [Nn]*) return 1 ;;
-        "")
-            case "$default" in
-                [Yy]*) return 0 ;;
-                *) return 1 ;;
-            esac
-            ;;
-        *) return 1 ;;
-    esac
-}
-
-# Ask user for choice with default
-ask_choice() {
-    local prompt="$1"
-    local default="$2"
-    shift 2
-    local choices=("$@")
-
-    local full_prompt="$prompt (1-${#choices[@]})"
-    if [[ -n "$default" ]]; then
-        full_prompt="$full_prompt [default: $default]"
-    fi
-    full_prompt="$full_prompt: "
-
-    local response
-    response=$(ask_user "$full_prompt" "$default")
-
+    read -p "$prompt" response < /dev/tty
     echo "$response"
 }
 
@@ -107,15 +31,20 @@ cleanup() {
         print_info "Cleanup - temporary directory to be deleted:"
         echo "  $CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR"
         echo
-        if ask_confirmation "Execute this cleanup command?" "N"; then
-            print_info "Executing cleanup: rm -rf $(printf '%q' "$CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR")"
-            rm -rf "$CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR"
-            print_info "Cleanup completed"
-        else
-            print_warn "Cleanup skipped. You may need to manually delete:"
-            echo "  $CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR"
-            print_info "To delete manually, run: rm -rf $(printf '%q' "$CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR")"
-        fi
+        local response
+        response=$(ask_user "Execute this cleanup command? (y/N): ")
+        case "$response" in
+            [Yy]*)
+                print_info "Executing cleanup: rm -rf $(printf '%q' "$CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR")"
+                rm -rf "$CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR"
+                print_info "Cleanup completed"
+                ;;
+            *)
+                print_warn "Cleanup skipped. You may need to manually delete:"
+                echo "  $CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR"
+                print_info "To delete manually, run: rm -rf $(printf '%q' "$CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR")"
+                ;;
+        esac
     fi
 }
 trap cleanup EXIT
@@ -236,54 +165,16 @@ handle_existing_config() {
         print_warn "Found existing configuration files:"
         printf '%s\n' "${conflicts[@]}"
 
-        echo
-        echo "Choose an option:"
-        echo "1) Backup existing files and overwrite"
-        echo "2) Abort installation"
+        local backup_dir="$project_root/.claude_backup_$(date +%Y%m%d_%H%M%S)"
+        mkdir -p "$backup_dir"
+        print_info "Backing up to: $backup_dir"
 
-        local choice
-        choice=$(ask_choice "Enter choice" "2" "Backup and overwrite" "Abort installation")
-
-        case $choice in
-            1)
-                local backup_dir="$project_root/.claude_backup_$(date +%Y%m%d_%H%M%S)"
-                mkdir -p "$backup_dir"
-                print_info "Backup directory created: $backup_dir"
-
-                # Build backup command
-                local backup_files=()
-                for file in "${conflicts[@]}"; do
-                    if [[ -e "$file" ]]; then
-                        backup_files+=("$file")
-                    fi
-                done
-
-                if [[ ${#backup_files[@]} -gt 0 ]]; then
-                    echo
-                    print_info "The following backup command will be executed:"
-                    echo "  mv $(printf '%q ' "${backup_files[@]}") $(printf '%q' "$backup_dir")/"
-                    echo
-                    if ask_confirmation "Execute this backup command?" "N"; then
-                        print_info "Executing backup command..."
-                        for file in "${backup_files[@]}"; do
-                            mv "$file" "$backup_dir/"
-                            print_info "Backed up: $(basename "$file")"
-                        done
-                    else
-                        print_error "Backup declined, cannot proceed with installation"
-                        exit 1
-                    fi
-                fi
-                ;;
-            2)
-                print_info "Installation aborted by user"
-                exit 0
-                ;;
-            *)
-                print_error "Invalid choice"
-                exit 1
-                ;;
-        esac
+        for file in "${conflicts[@]}"; do
+            if [[ -e "$file" ]]; then
+                mv "$file" "$backup_dir/"
+                print_info "✓ Backed up: $(basename "$file")"
+            fi
+        done
     fi
 }
 
