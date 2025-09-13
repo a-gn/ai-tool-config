@@ -1,3 +1,5 @@
+# Project-specific AI agent instructions
+
 ## Core Principles
 
 • **Error Handling**: Never suppress errors or bypass failures; crash early or deliver everything requested
@@ -10,4 +12,4 @@
 
 ## Language-Specific Guidelines
 
-@languages/python/README.md
+@agent_instructions/languages/python/README.md
