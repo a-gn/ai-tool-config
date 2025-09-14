@@ -59,10 +59,13 @@ check_safe_to_remove() {
     # Only allow specific temp directory patterns
     case "$target" in
         /tmp/* | /private/var/folders/* | /var/folders/* | /var/tmp/* | /private/tmp/*)
-            print_info "Safe path accepted for deletion: $target (original: $original_target)"
+            # Path is safe to remove
             ;;
         *)
-            print_error "Path rejected - not in allowed temp directories: $target"
+            print_error "Path rejected - not in allowed temp directories"
+            print_error "  Original path: $original_target"
+            print_error "  Resolved path: $target"
+            print_error "  Allowed patterns: /tmp/*, /private/var/folders/*, /var/folders/*, /var/tmp/*, /private/tmp/*"
             exit 1
             ;;
     esac
@@ -71,13 +74,23 @@ check_safe_to_remove() {
 remove_dir() {
     local dir="$1"
     check_safe_to_remove "$dir"
-    [[ -d "$dir" ]] && rm -rf "$dir"
+    if [[ -d "$dir" ]]; then
+        rm -rf "$dir"
+    else
+        print_error "Directory does not exist: $dir"
+        exit 1
+    fi
 }
 
 remove_file() {
     local file="$1"
     check_safe_to_remove "$file"
-    [[ -f "$file" ]] && rm -f "$file"
+    if [[ -f "$file" ]]; then
+        rm -f "$file"
+    else
+        print_error "File does not exist: $file"
+        exit 1
+    fi
 }
 
 # Clean up temp directory on exit
