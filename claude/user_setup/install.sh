@@ -12,27 +12,6 @@ print_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 print_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-ask_user() {
-    local prompt="$1"
-    local response=""
-    read -p "$prompt" response < /dev/tty
-    echo "$response"
-}
-
-# Clean up temp directory on exit
-cleanup() {
-    if [[ -n "${CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR:-}" && -d "$CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR" ]]; then
-        echo
-        print_info "Cleanup - temporary directory to be deleted: $CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR"
-        local response
-        response=$(ask_user "Execute cleanup? (y/N): ")
-        case "$response" in
-            [Yy]*) rm -rf "$CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR" && print_info "Cleanup completed" ;;
-            *) print_warn "Cleanup skipped. Manual delete: rm -rf $(printf '%q' "$CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR")" ;;
-        esac
-    fi
-}
-trap cleanup EXIT
 
 
 # Backup existing config
