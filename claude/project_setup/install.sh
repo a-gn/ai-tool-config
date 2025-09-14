@@ -13,13 +13,6 @@ print_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 print_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-ask_user() {
-    local prompt="$1"
-    local response=""
-    read -p "$prompt" response < /dev/tty
-    echo "$response"
-}
-
 # Safety check - don't install in dangerous directories
 check_safe_directory() {
     local excluded_dirs=("$HOME" "$HOME/Documents" "$HOME/Desktop" "$HOME/Downloads" "/tmp" "/var" "/Users" "/home" "/System" "/usr" "/opt")
@@ -33,30 +26,41 @@ check_safe_directory() {
 
 # Clean up temp directory on exit
 cleanup() {
-    if [[ -n "${CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR:-}" && -d "$CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR" ]]; then
-        echo
-        print_info "Cleanup - temporary directory to be deleted: $CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR"
-        local response
-        response=$(ask_user "Execute cleanup? (y/N): ")
-        case "$response" in
-            [Yy]*) rm -rf "$CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR" && print_info "Cleanup completed" ;;
-            *) print_warn "Cleanup skipped. Manual delete: rm -rf $(printf '%q' "$CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR")" ;;
-        esac
+    # Multiple safety checks before removing anything
+    if [[ -n "${CLAUDE_SETUP_SCRIPT_TEMP_DIR:-}" ]] && \
+       [[ -d "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" ]] && \
+       [[ -f "$CLAUDE_SETUP_SCRIPT_TEMP_DIR/inside_temp_folder_to_delete" ]] && \
+       [[ "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" == /tmp/* || "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" == /var/folders/* ]] && \
+       [[ "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" != "/tmp" ]] && \
+       [[ "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" != "/var/folders" ]] && \
+       [[ "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" != "/home" ]] && \
+       [[ "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" != /home/* ]] && \
+       [[ "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" != "/Users" ]] && \
+       [[ "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" != /Users/* ]] && \
+       [[ "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" != "$HOME" ]] && \
+       [[ "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" != "$HOME"/* ]] && \
+       [[ "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" != "/root" ]] && \
+       [[ "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" != /root/* ]] && \
+       [[ "$EUID" -ne 0 ]] && \
+       [[ ${#CLAUDE_SETUP_SCRIPT_TEMP_DIR} -gt 10 ]]; then
+        print_info "Cleaning up temporary directory: $CLAUDE_SETUP_SCRIPT_TEMP_DIR"
+        rm -rf "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" && print_info "Cleanup completed"
+    else
+        print_warn "NOT cleaning up temporary directory at \"$CLAUDE_SETUP_SCRIPT_TEMP_DIR\" due to safety checks"
     fi
 }
 trap cleanup EXIT
 
 # Remove language references from CLAUDE.md
 clean_claude_md() {
-    local source_dir="$1"
+    local claude_md="$1"
     shift
     local keep_languages=("$@")
-    local claude_md="$source_dir/CLAUDE.md"
 
     [[ ! -f "$claude_md" || ${#keep_languages[@]} -eq 0 ]] && return
 
     local temp_file
-    temp_file=$(mktemp)
+    temp_file=$(mktemp -p "$CLAUDE_SETUP_SCRIPT_TEMP_DIR")
 
     while IFS= read -r line; do
         if [[ "$line" =~ @agent_instructions/languages/([^/]+)/ ]]; then
@@ -76,10 +80,10 @@ clean_claude_md() {
 
 # Remove unused language directories
 clean_language_files() {
-    local source_dir="$1"
+    local temp_source_dir="$1"
     shift
     local keep_languages=("$@")
-    local lang_dir="$source_dir/agent_instructions/languages"
+    local lang_dir="$temp_source_dir/agent_instructions/languages"
 
     [[ ! -d "$lang_dir" || ${#keep_languages[@]} -eq 0 ]] && return
 
@@ -127,37 +131,46 @@ backup_existing_config() {
 
 # Main installation
 main() {
+    # Refuse to run as root
+    if [[ "$EUID" -eq 0 ]]; then
+        print_error "Do not run this script as root"
+        exit 1
+    fi
+
     local languages=("$@")
     [[ ${#languages[@]} -eq 0 ]] && print_error "Usage: $0 <language1> [language2] ..." && exit 1
 
     print_info "Installing Claude Code configuration for: ${languages[*]}"
     check_safe_directory
 
-    # Download repository
-    CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR=$(mktemp -d)
+    # Download repository - use system temp directory
+    CLAUDE_SETUP_SCRIPT_TEMP_DIR=$(mktemp -d -t claude_install.XXXXXX)
+    # Create canary file for safety verification
+    touch "$CLAUDE_SETUP_SCRIPT_TEMP_DIR/inside_temp_folder_to_delete"
     print_info "Downloading repository..."
-    curl -sL "https://github.com/a-gn/ai-tool-config/archive/refs/heads/main.zip" -o "$CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR/repo.zip"
-    cd "$CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR" && unzip -q repo.zip
+    curl -sL "https://github.com/a-gn/ai-tool-config/archive/refs/heads/main.zip" -o "$CLAUDE_SETUP_SCRIPT_TEMP_DIR/repo.zip"
 
-    local source_dir="$CLAUDE_INSTRUCTIONS_SETUP_SCRIPT_TEMP_DIR/ai-tool-config-main/claude/project_setup"
-    [[ ! -d "$source_dir" ]] && print_error "Project setup folder not found" && exit 1
+    # Extract to subdirectory to avoid temp files mixing with source files
+    mkdir -p "$CLAUDE_SETUP_SCRIPT_TEMP_DIR/extract"
+    unzip -q "$CLAUDE_SETUP_SCRIPT_TEMP_DIR/repo.zip" -d "$CLAUDE_SETUP_SCRIPT_TEMP_DIR/extract"
+
+    local temp_source_dir="$CLAUDE_SETUP_SCRIPT_TEMP_DIR/extract/ai-tool-config-main/claude/project_setup"
+    [[ ! -d "$temp_source_dir" ]] && print_error "Project setup folder not found" && exit 1
 
     # Validate languages exist
-    local lang_dir="$source_dir/agent_instructions/languages"
+    local lang_dir="$temp_source_dir/agent_instructions/languages"
     for lang in "${languages[@]}"; do
         [[ ! -d "$lang_dir/$lang" ]] && print_error "Language '$lang' not found" && exit 1
     done
 
     # Clean up files
-    clean_language_files "$source_dir" "${languages[@]}"
-    clean_claude_md "$source_dir" "${languages[@]}"
-    rm -f "$source_dir/README.md" "$source_dir/install.sh"
-
-    cd "$OLDPWD"
+    clean_language_files "$temp_source_dir" "${languages[@]}"
+    clean_claude_md "$temp_source_dir/CLAUDE.md" "${languages[@]}"
+    rm -f "$temp_source_dir/README.md" "$temp_source_dir/install.sh"
 
     # Install
     backup_existing_config
-    cp -r "$source_dir"/* ./
+    cp -r "$temp_source_dir"/* ./
     print_info "✓ Installation complete"
 
     # Git handling

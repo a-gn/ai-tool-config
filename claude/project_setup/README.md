@@ -24,6 +24,6 @@ The script will:
 3. Remove language-specific files not specified in the arguments
 4. Check for existing Claude configuration and back it up with rollback instructions
 5. Install the project-specific configuration to your current directory
-6. Provide cleanup with user confirmation
+6. Automatically clean up temporary files
 
 After installation, Claude will use these instructions when working in this project. Consider committing the new files to your git repository.
