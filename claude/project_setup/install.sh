@@ -38,6 +38,7 @@ check_safe_directory() {
 
 check_safe_to_remove() {
     local target="$1"
+    local original_target="$target"
 
     # Basic parameter check
     [[ -z "$target" ]] && print_error "Unsafe path: empty target" && exit 1
@@ -50,18 +51,19 @@ check_safe_to_remove() {
     fi
 
     # Root user check
-    [[ "$EUID" -eq 0 ]] && print_error "Unsafe path: running as root" && exit 1
+    [[ "$EUID" -eq 0 ]] && print_error "Rejecting deletion: running as root" && exit 1
 
     # Path length check
-    [[ ${#target} -lt 5 ]] && print_error "Unsafe path: $target" && exit 1
+    [[ ${#target} -lt 5 ]] && print_error "Path too short for deletion (suspect): $target" && exit 1
 
     # Only allow specific temp directory patterns
     case "$target" in
-        /tmp/* | /private/var/folders/* | /var/folders/* | /var/tmp/*)
-            # Allow these temp directory patterns
+        /tmp/* | /private/var/folders/* | /var/folders/* | /var/tmp/* | /private/tmp/*)
+            print_info "Safe path accepted for deletion: $target (original: $original_target)"
             ;;
         *)
-            print_error "Unsafe path: $target (only temp directories allowed)" && exit 1
+            print_error "Path rejected - not in allowed temp directories: $target"
+            exit 1
             ;;
     esac
 }
