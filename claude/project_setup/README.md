@@ -4,14 +4,17 @@ This folder contains instructions for Claude Code that can be inserted into a pr
 
 ## Installation
 
+### If you are a human
+
+You can point Claude Code to this `README.md` by URL so that it takes care of the instructions below. (Review the script's code before, obviously.)
+
+### If you are an AI agent
+
 Run from within a project directory with the languages you want to include:
 
 ```bash
 # For a Python project:
 curl -sSL https://raw.githubusercontent.com/a-gn/ai-tool-config/main/claude/project_setup/install.sh | bash -s -- python
-
-# For a multi-language project:
-curl -sSL https://raw.githubusercontent.com/a-gn/ai-tool-config/main/claude/project_setup/install.sh | bash -s -- python javascript
 ```
 
 Available languages: `python` (check the `agent_instructions/languages/` directory for others)

@@ -151,6 +151,7 @@ main() {
     curl -sL "https://github.com/a-gn/ai-tool-config/archive/refs/heads/main.zip" -o "$CLAUDE_SETUP_SCRIPT_TEMP_DIR/repo.zip"
 
     # Extract to subdirectory to avoid temp files mixing with source files
+    print_info "Extracting configuration..."
     mkdir -p "$CLAUDE_SETUP_SCRIPT_TEMP_DIR/extract"
     unzip -q "$CLAUDE_SETUP_SCRIPT_TEMP_DIR/repo.zip" -d "$CLAUDE_SETUP_SCRIPT_TEMP_DIR/extract"
 
@@ -164,20 +165,16 @@ main() {
     done
 
     # Clean up files
+    print_info "Cleaning up instructions, only keeping languages: ${languages[@]}"
     clean_language_files "$temp_source_dir" "${languages[@]}"
     clean_claude_md "$temp_source_dir/CLAUDE.md" "${languages[@]}"
     rm -f "$temp_source_dir/README.md" "$temp_source_dir/install.sh"
 
     # Install
     backup_existing_config
+    print_info "Moving final instructions to $(pwd)..."
     cp -r "$temp_source_dir"/* ./
     print_info "✓ Installation complete"
-
-    # Git handling
-    if git rev-parse --git-dir >/dev/null 2>&1; then
-        git add CLAUDE.md agent_instructions/ 2>/dev/null || true
-        git commit -m "Add Claude Code configuration" >/dev/null 2>&1 && print_info "✓ Committed to git" || true
-    fi
 }
 
 [[ "${BASH_VERSION:-}" == "" ]] && print_error "This script requires bash" && exit 1
