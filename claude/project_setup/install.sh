@@ -49,59 +49,21 @@ check_safe_to_remove() {
         target=$(realpath -m "$target")
     fi
 
-    # Critical system paths
-    local critical_paths=(
-        "/"
-        "/bin"
-        "/boot"
-        "/dev"
-        "/etc"
-        "/lib"
-        "/lib64"
-        "/opt"
-        "/proc"
-        "/root"
-        "/run"
-        "/sbin"
-        "/srv"
-        "/sys"
-        "/usr"
-        "/var"
-        "/home"
-        "/Users"
-        "/System"
-        "/Applications"
-        "/Library"
-    )
-
-    for path in "${critical_paths[@]}"; do
-        [[ "$target" == "$path" || "$target" == "$path"/* ]] && print_error "Unsafe path: $target" && exit 1
-    done
-
-    # Home directory protection
-    [[ "$target" == "$HOME" || "$target" == "$HOME"/* ]] && print_error "Unsafe path: $target" && exit 1
-
     # Root user check
     [[ "$EUID" -eq 0 ]] && print_error "Unsafe path: running as root" && exit 1
 
     # Path length check
     [[ ${#target} -lt 5 ]] && print_error "Unsafe path: $target" && exit 1
 
-    # Temp directory verification
-    if [[ -d "$target" ]]; then
-        case "$target" in
-            /tmp/* | /var/folders/* | /var/tmp/*)
-                if [[ ! -f "$target/inside_temp_folder_to_delete" ]] && [[ "$target" == *temp* || "$target" == *tmp* ]]; then
-                    print_warn "Missing safety marker for temp directory: $target"
-                fi
-                ;;
-            *)
-                if [[ "$target" != *temp* && "$target" != *tmp* ]]; then
-                    print_error "Unsafe path: $target" && exit 1
-                fi
-                ;;
-        esac
-    fi
+    # Only allow specific temp directory patterns
+    case "$target" in
+        /tmp/* | /private/var/folders/* | /var/folders/* | /var/tmp/*)
+            # Allow these temp directory patterns
+            ;;
+        *)
+            print_error "Unsafe path: $target (only temp directories allowed)" && exit 1
+            ;;
+    esac
 }
 
 remove_dir() {
@@ -119,7 +81,12 @@ remove_file() {
 # Clean up temp directory on exit
 cleanup() {
     if [[ -n "${CLAUDE_SETUP_SCRIPT_TEMP_DIR:-}" ]]; then
-        remove_dir "$CLAUDE_SETUP_SCRIPT_TEMP_DIR"
+        # Verify canary file exists before removal for extra safety
+        if [[ -f "$CLAUDE_SETUP_SCRIPT_TEMP_DIR/inside_temp_folder_to_delete" ]]; then
+            remove_dir "$CLAUDE_SETUP_SCRIPT_TEMP_DIR"
+        else
+            print_warn "Skipping cleanup - missing safety marker in $CLAUDE_SETUP_SCRIPT_TEMP_DIR"
+        fi
     fi
 }
 trap cleanup EXIT
