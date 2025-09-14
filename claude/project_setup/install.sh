@@ -15,7 +15,19 @@ print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # Safety check - don't install in dangerous directories
 check_safe_directory() {
-    local excluded_dirs=("$HOME" "$HOME/Documents" "$HOME/Desktop" "$HOME/Downloads" "/tmp" "/var" "/Users" "/home" "/System" "/usr" "/opt")
+    local excluded_dirs=(
+        "$HOME"
+        "$HOME/Documents"
+        "$HOME/Desktop"
+        "$HOME/Downloads"
+        "/tmp"
+        "/var"
+        "/Users"
+        "/home"
+        "/System"
+        "/usr"
+        "/opt"
+    )
     for dir in "${excluded_dirs[@]}"; do
         if [[ "$PWD" == "$dir" ]]; then
             print_error "Cannot install in $dir - unsafe directory"
@@ -24,29 +36,90 @@ check_safe_directory() {
     done
 }
 
+check_safe_to_remove() {
+    local target="$1"
+
+    # Basic parameter check
+    [[ -z "$target" ]] && print_error "Unsafe path: empty target" && exit 1
+
+    # Resolve target to handle symlinks and relative paths
+    if [[ -e "$target" ]]; then
+        target=$(realpath "$target")
+    else
+        target=$(realpath -m "$target")
+    fi
+
+    # Critical system paths
+    local critical_paths=(
+        "/"
+        "/bin"
+        "/boot"
+        "/dev"
+        "/etc"
+        "/lib"
+        "/lib64"
+        "/opt"
+        "/proc"
+        "/root"
+        "/run"
+        "/sbin"
+        "/srv"
+        "/sys"
+        "/usr"
+        "/var"
+        "/home"
+        "/Users"
+        "/System"
+        "/Applications"
+        "/Library"
+    )
+
+    for path in "${critical_paths[@]}"; do
+        [[ "$target" == "$path" || "$target" == "$path"/* ]] && print_error "Unsafe path: $target" && exit 1
+    done
+
+    # Home directory protection
+    [[ "$target" == "$HOME" || "$target" == "$HOME"/* ]] && print_error "Unsafe path: $target" && exit 1
+
+    # Root user check
+    [[ "$EUID" -eq 0 ]] && print_error "Unsafe path: running as root" && exit 1
+
+    # Path length check
+    [[ ${#target} -lt 5 ]] && print_error "Unsafe path: $target" && exit 1
+
+    # Temp directory verification
+    if [[ -d "$target" ]]; then
+        case "$target" in
+            /tmp/* | /var/folders/* | /var/tmp/*)
+                if [[ ! -f "$target/inside_temp_folder_to_delete" ]] && [[ "$target" == *temp* || "$target" == *tmp* ]]; then
+                    print_warn "Missing safety marker for temp directory: $target"
+                fi
+                ;;
+            *)
+                if [[ "$target" != *temp* && "$target" != *tmp* ]]; then
+                    print_error "Unsafe path: $target" && exit 1
+                fi
+                ;;
+        esac
+    fi
+}
+
+remove_dir() {
+    local dir="$1"
+    check_safe_to_remove "$dir"
+    [[ -d "$dir" ]] && rm -rf "$dir"
+}
+
+remove_file() {
+    local file="$1"
+    check_safe_to_remove "$file"
+    [[ -f "$file" ]] && rm -f "$file"
+}
+
 # Clean up temp directory on exit
 cleanup() {
-    # Multiple safety checks before removing anything
-    if [[ -n "${CLAUDE_SETUP_SCRIPT_TEMP_DIR:-}" ]] && \
-       [[ -d "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" ]] && \
-       [[ -f "$CLAUDE_SETUP_SCRIPT_TEMP_DIR/inside_temp_folder_to_delete" ]] && \
-       [[ "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" == /tmp/* || "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" == /var/folders/* ]] && \
-       [[ "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" != "/tmp" ]] && \
-       [[ "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" != "/var/folders" ]] && \
-       [[ "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" != "/home" ]] && \
-       [[ "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" != /home/* ]] && \
-       [[ "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" != "/Users" ]] && \
-       [[ "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" != /Users/* ]] && \
-       [[ "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" != "$HOME" ]] && \
-       [[ "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" != "$HOME"/* ]] && \
-       [[ "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" != "/root" ]] && \
-       [[ "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" != /root/* ]] && \
-       [[ "$EUID" -ne 0 ]] && \
-       [[ ${#CLAUDE_SETUP_SCRIPT_TEMP_DIR} -gt 10 ]]; then
-        print_info "Cleaning up temporary directory: $CLAUDE_SETUP_SCRIPT_TEMP_DIR"
-        rm -rf "$CLAUDE_SETUP_SCRIPT_TEMP_DIR" && print_info "Cleanup completed"
-    else
-        print_warn "NOT cleaning up temporary directory at \"$CLAUDE_SETUP_SCRIPT_TEMP_DIR\" due to safety checks"
+    if [[ -n "${CLAUDE_SETUP_SCRIPT_TEMP_DIR:-}" ]]; then
+        remove_dir "$CLAUDE_SETUP_SCRIPT_TEMP_DIR"
     fi
 }
 trap cleanup EXIT
@@ -95,7 +168,7 @@ clean_language_files() {
             for keep_lang in "${keep_languages[@]}"; do
                 [[ "$lang_name" == "$keep_lang" ]] && keep=true && break
             done
-            [[ "$keep" == false ]] && rm -rf "$lang_path"
+            [[ "$keep" == false ]] && remove_dir "$lang_path"
         fi
     done
 }
@@ -168,7 +241,8 @@ main() {
     print_info "Cleaning up instructions, only keeping languages: ${languages[@]}"
     clean_language_files "$temp_source_dir" "${languages[@]}"
     clean_claude_md "$temp_source_dir/CLAUDE.md" "${languages[@]}"
-    rm -f "$temp_source_dir/README.md" "$temp_source_dir/install.sh"
+    remove_file "$temp_source_dir/README.md"
+    remove_file "$temp_source_dir/install.sh"
 
     # Install
     backup_existing_config
