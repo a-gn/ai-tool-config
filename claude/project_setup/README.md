@@ -14,7 +14,13 @@ Run from within a project directory with the languages you want to include:
 
 ```bash
 # For a Python project:
-curl -sSL https://raw.githubusercontent.com/a-gn/ai-tool-config/main/claude/project_setup/install.sh | bash -s -- python
+curl -sSL https://raw.githubusercontent.com/a-gn/ai-tool-config/main/claude/project_setup/install.py | python3 - python
+
+# For interactive language selection:
+curl -sSL https://raw.githubusercontent.com/a-gn/ai-tool-config/main/claude/project_setup/install.py | python3 - --interactive
+
+# For all available languages:
+curl -sSL https://raw.githubusercontent.com/a-gn/ai-tool-config/main/claude/project_setup/install.py | python3 -
 ```
 
 Available languages: `python` (check the `agent_instructions/languages/` directory for others)
