@@ -3,7 +3,7 @@
 #### Core Requirements
 
 ##### Error Handling
-ALWAYS let exceptions percolate up by default. Do NOT suppress errors.
+IMPORTANT: ALWAYS let exceptions percolate up by default. Do NOT suppress errors.
 
 Only suppress an exception and use `_log.warning(...)` if EVERYTHING the user asked for can still be done. If any part is compromised, raise instead. Warnings are for recoverable conditions.
 
