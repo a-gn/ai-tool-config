@@ -1,1 +1,0 @@
-Fetch https://github.com/a-gn/ai-tool-config/blob/main/claude/project_setup/README.md and follow the installation instructions there.
