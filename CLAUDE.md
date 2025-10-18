@@ -1,1 +1,0 @@
-claude/user_setup/CLAUDE.md
