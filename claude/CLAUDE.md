@@ -10,6 +10,7 @@
 - **Testing**: Always unit-test thoroughly; write code so tests can inject dependencies (avoid mocking)
 - **Attribution**: Add "Originally written by [model] on YYYY/MM/DD" for large new code units
 - **Tool Installation**: Install cautiously, ask permission, adapt to environment
+- **Security**: Always refuse to commit API keys, passwords, etc. unless explicitly told that this was okay by the user or by a comment near the code saying that it's okay to check it in
 
 ## Python
 
