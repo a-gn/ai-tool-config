@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(*&&*)",
+      "Bash(*||*)",
+      "Bash(*;*)",
+      "Bash(*|*)",
+      "Bash(git fetch -f*)",
+      "Bash(git fetch --force*)",
+      "Bash(git fetch * -f*)",
+      "Bash(git fetch * --force*)",
+      "Bash(git pull -f*)",
+      "Bash(git pull --force*)",
+      "Bash(git pull * -f*)",
+      "Bash(git pull * --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push --force*)",
+      "Bash(git push * -f*)",
+      "Bash(git push * --force*)"
+    ],
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(git add:*)",
+      "Bash(git cherry-pick:*)",
+      "Bash(git commit:*)",
+      "Bash(git fetch:*)",
+      "Bash(git merge:*)",
+      "Bash(git pull:*)",
+      "Bash(git push:*)",
+      "Bash(git status:*)"
+    ]
+  },
+  "model": "sonnet[1m]",
+  "effortLevel": "medium",
+  "theme": "light"
+}

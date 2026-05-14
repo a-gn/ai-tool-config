@@ -1,0 +1,5 @@
+# Intentionally empty.
+#
+# Codex execpolicy currently uses prefix-based command matching, which cannot
+# safely allow commands while denying shell chaining or force flags later in the
+# argument list.
