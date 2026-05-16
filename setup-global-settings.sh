@@ -42,6 +42,8 @@ setup_link() {
 }
 
 setup_link "$HOME/.claude/settings.json" "$script_dir/claude/settings.json" "claude/settings.json"
+setup_link "$HOME/.claude/CLAUDE.md" "$script_dir/claude/CLAUDE.md" "claude/CLAUDE.md"
+setup_link "$HOME/.claude/statusline-command.sh" "$script_dir/claude/statusline-command.sh" "claude/statusline-command.sh"
 setup_link "$HOME/.codex/rules/default.rules" "$script_dir/codex/rules/default.rules" "codex/rules/default.rules"
 
 printf 'Backup README: %s\n' "$readme_path"

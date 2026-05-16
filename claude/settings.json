@@ -32,5 +32,9 @@
   },
   "model": "sonnet[1m]",
   "effortLevel": "medium",
-  "theme": "light"
+  "theme": "dark",
+  "statusLine": {
+    "type": "command",
+    "command": "sh /Users/arnogn/.claude/statusline-command.sh"
+  }
 }
